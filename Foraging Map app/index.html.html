@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Foraging Community</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            background: #1a1a1a;
+        }
+
+        #map {
+            height: 100vh;
+            width: 100%;
+            z-index: 1;
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            z-index: 1000;
+            max-width: 400px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .ai-status {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .ai-status.connected {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        /* User Profile Section */
+        .user-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: -20px -20px 20px -20px;
+            padding: 20px;
+            border-radius: 16px 16px 0 0;
+            color: white;
+        }
+
+        .user-input {
+            display: flex;
+            gap: 10px;
+        }
+
+        .user-input input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .user-input input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .user-input button {
+            padding: 10px 20px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .user-display {
+            display: none;
+        }
+
+        .user-display.active {
+            display: block;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .user-details h3 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .user-details p {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 12px;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Map Tab Content */
+        .location-status {
+            padding: 12px;
+            background: #f5f5f5;
+            color: #666;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .location-status.tracking {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
+        }
+
+        .btn-ai {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        /* Add Form */
+        .add-form {
+            display: none;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .add-form.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #34495e;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .type-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .type-option {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .type-option:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .type-option.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        }
+
+        .type-option .emoji {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .type-option .name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .photo-upload {
+            position: relative;
+            width: 100%;
+            padding: 30px 20px;
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+        }
+
+        .photo-upload input[type="file"] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .photo-preview {
+            margin-top: 15px;
+            width: 100%;
+            max-height: 200px;
+            object-fit: cover;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .photo-preview.active {
+            display: block;
+        }
+
+        .ai-analyze-btn {
+            margin-top: 10px;
+            padding: 10px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            display: none;
+        }
+
+        .ai-analyze-btn.active {
+            display: block;
+        }
+
+        .ai-results {
+            margin-top: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #f093fb;
+            display: none;
+        }
+
+        .ai-results.active {
+            display: block;
+        }
+
+        .ai-results h4 {
+            color: #f5576c;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Pins List */
+        .pins-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .pins-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .pin-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .pin-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .pin-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .pin-type {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .pin-type.mushroom {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .pin-type.flower {
+            background: #ffe0ec;
+            color: #d63384;
+        }
+
+        .pin-type.berry {
+            background: #e8daff;
+            color: #6f42c1;
+        }
+
+        .pin-type.herb {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .pin-type.unknown {
+            background: #e2e3e5;
+            color: #6c757d;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            display: none;
+        }
+
+        .pin-item:hover .delete-btn {
+            display: block;
+        }
+
+        /* Chat Tab */
+        .chat-container {
+            height: 450px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .chat-message {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .chat-message.own {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-left: 20%;
+        }
+
+        .chat-message.ai {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-left: 4px solid #fff;
+        }
+
+        .chat-author {
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 5px;
+            color: #667eea;
+        }
+
+        .chat-message.own .chat-author,
+        .chat-message.ai .chat-author {
+            color: rgba(255,255,255,0.9);
+        }
+
+        .chat-text {
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .chat-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .chat-input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .chat-send {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* AI Tab */
+        .ai-section {
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.1), rgba(245, 87, 108, 0.1));
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .ai-question {
+            margin-bottom: 15px;
+        }
+
+        .ai-question input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #f093fb;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .ai-responses {
+            max-height: 300px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .ai-response {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #f093fb;
+        }
+
+        @media (max-width: 768px) {
+            .control-panel {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="control-panel">
+        <div class="ai-status" id="aiStatus">
+            🤖 AI Assistant Ready
+        </div>
+
+        <!-- User Section -->
+        <div class="user-section">
+            <div class="user-input" id="userInput">
+                <input type="text" id="userName" placeholder="Enter your forager name..." maxlength="20">
+                <button onclick="setUser()">Join</button>
+            </div>
+            <div class="user-display" id="userDisplay">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">👤</div>
+                    <div class="user-details">
+                        <h3 id="displayName">Forager</h3>
+                        <p>🌟 Active Explorer • <span id="onlineCount">1</span> online</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('map')">🗺️ Map</button>
+            <button class="tab-btn" onclick="switchTab('chat')">💬 Chat</button>
+            <button class="tab-btn" onclick="switchTab('ai')">🤖 AI</button>
+        </div>
+
+        <!-- Map Tab -->
+        <div class="tab-content active" id="mapTab">
+            <div class="location-status" id="locationStatus">
+                📍 Click "Track My Location" to start
+            </div>
+
+            <button class="btn btn-primary" onclick="trackLocation()">
+                📍 Track My Location
+            </button>
+            
+            <button class="btn btn-success" onclick="toggleAddForm()">
+                ➕ Add Discovery
+            </button>
+
+            <div class="add-form" id="addForm">
+                <h3>New Discovery</h3>
+                
+                <div class="form-group">
+                    <label>Type</label>
+                    <div class="type-grid">
+                        <div class="type-option selected" onclick="selectType('mushroom')" data-type="mushroom">
+                            <div class="emoji">🍄</div>
+                            <div class="name">Mushroom</div>
+                        </div>
+                        <div class="type-option" onclick="selectType('flower')" data-type="flower">
+                            <div class="emoji">🌸</div>
+                            <div class="name">Flower</div>
+                        </div>
+                        <div class="type-option" onclick="selectType('berry')" data-type="berry">
+                            <div class="emoji">🍓</div>
+                            <div class="name">Berry</div>
+                        </div>
+                        <div class="type-option" onclick="selectType('herb')" data-type="herb">
+                            <div class="emoji">🌿</div>
+                            <div class="name">Herb</div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="pinType" value="mushroom">
+                </div>
+
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="pinName" placeholder="e.g., Chanterelle...">
+                </div>
+                
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="pinDescription" placeholder="Describe your find..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Photo</label>
+                    <div class="photo-upload">
+                        <input type="file" id="photoInput" accept="image/*" capture="environment" onchange="handlePhotoSelect(event)">
+                        <div>📸 Tap to take/upload photo</div>
+                    </div>
+                    <img id="photoPreview" class="photo-preview" alt="Preview">
+                    <button type="button" class="ai-analyze-btn" id="aiAnalyzeBtn" onclick="analyzeWithAI()">
+                        🤖 Analyze with AI
+                    </button>
+                    <div class="ai-results" id="aiResults">
+                        <h4>🤖 AI Analysis</h4>
+                        <div id="aiResultsContent"></div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-success" onclick="savePin()">Save Discovery</button>
+                <button class="btn btn-danger" onclick="toggleAddForm()">Cancel</button>
+            </div>
+
+            <div class="pins-section">
+                <h3>📌 Recent Discoveries</h3>
+                <div class="pin-list" id="pinList"></div>
+            </div>
+        </div>
+
+        <!-- Chat Tab -->
+        <div class="tab-content" id="chatTab">
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-message ai">
+                        <div class="chat-author">🤖 AI Assistant</div>
+                        <div class="chat-text">Welcome to the AI Foraging Community! I can help identify plants, suggest foraging spots, and answer questions about nature.</div>
+                        <div class="chat-time">Now</div>
+                    </div>
+                </div>
+                <div class="chat-input-container">
+                    <input type="text" class="chat-input" id="chatInput" placeholder="Ask about foraging or chat with others..." onkeypress="handleChatKeypress(event)">
+                    <button class="chat-send" onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Tab -->
+        <div class="tab-content" id="aiTab">
+            <div class="ai-section">
+                <h3>🤖 AI Foraging Assistant</h3>
+                <div class="ai-question">
+                    <input type="text" id="aiQuestion" placeholder="Ask about plants, safety, locations..." onkeypress="handleAIKeypress(event)">
+                    <button class="btn btn-ai" onclick="askAI()" style="margin-top: 10px;">Ask AI</button>
+                </div>
+                <div class="ai-responses" id="aiResponses">
+                    <div class="ai-response">
+                        <strong>Welcome!</strong> I'm your AI foraging assistant. Ask me about:
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>Plant identification and safety</li>
+                            <li>Best foraging seasons and locations</li>
+                            <li>Edibility and preparation tips</li>
+                            <li>Sustainable foraging practices</li>
+                        </ul>
+                        Try asking: "What mushrooms are safe to eat?" or "Best berries for beginners?"
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Global variables
+        let map;
+        let currentLocationMarker = null;
+        let userLocation = null;
+        let pins = [];
+        let tempMarker = null;
+        let currentPhotoData = null;
+        let selectedType = 'mushroom';
+        let currentUser = null;
+        let chatMessages = [];
+        let aiConversation = [];
+        let onlineUsers = new Set();
+
+        // Simulated online storage (in a real app, this would be a backend service)
+        let sharedData = {
+            pins: [],
+            messages: [],
+            users: new Set()
+        };
+
+        // Icons for different types
+        const icons = {
+            mushroom: L.divIcon({
+                html: '<div style="background: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid #856404; font-size: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">🍄</div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                popupAnchor: [0, -15]
+            }),
+            flower: L.divIcon({
+                html: '<div style="background: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid #d63384; font-size: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">🌸</div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                popupAnchor: [0, -15]
+            }),
+            berry: L.divIcon({
+                html: '<div style="background: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid #6f42c1; font-size: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">🍓</div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                popupAnchor: [0, -15]
+            }),
+            herb: L.divIcon({
+                html: '<div style="background: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid #28a745; font-size: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">🌿</div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                popupAnchor: [0, -15]
+            }),
+            unknown: L.divIcon({
+                html: '<div style="background: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid #6c757d; font-size: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">❓</div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                popupAnchor: [0, -15]
+            })
+        };
+
+        const locationIcon = L.divIcon({
+            html: '<div style="background: #4285f4; border-radius: 50%; width: 20px; height: 20px; border: 3px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.3);"></div>',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+        });
+
+        // Initialize app
+        window.onload = function() {
+            initializeMap();
+            loadUser();
+            startDataSync();
+            selectType('mushroom');
+            
+            // Add welcome message
+            addAIMessage("Hello! I'm your AI foraging assistant. I can help you identify plants, learn about safe foraging, and discover the best locations for different seasons. What would you like to know?");
+        };
+
+        function initializeMap() {
+            map = L.map('map').setView([40.7128, -74.0060], 13);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+            
+            map.on('click', function(e) {
+                if (document.getElementById('addForm').classList.contains('active')) {
+                    if (tempMarker) map.removeLayer(tempMarker);
+                    tempMarker = L.marker(e.latlng, {opacity: 0.6})
+                        .addTo(map)
+                        .bindPopup('📍 New discovery location');
+                }
+            });
+        }
+
+        // Simulate real-time data synchronization
+        function startDataSync() {
+            // Load initial data
+            loadLocalData();
+            
+            // Simulate periodic sync with other users
+            setInterval(() => {
+                syncWithOtherUsers();
+                updateOnlineCount();
+            }, 5000);
+
+            updateAIStatus('connected');
+        }
+
+        function syncWithOtherUsers() {
+            // Simulate other users adding pins and messages
+            if (Math.random() > 0.98 && pins.length < 10) {
+                addSimulatedPin();
+            }
+            
+            if (Math.random() > 0.95 && chatMessages.length < 20) {
+                addSimulatedMessage();
+            }
+        }
+
+        function addSimulatedPin() {
+            const types = ['mushroom', 'flower', 'berry', 'herb'];
+            const names = {
+                mushroom: ['Chanterelle', 'Oyster Mushroom', 'Shiitake', 'Morel'],
+                flower: ['Wild Rose', 'Elderflower', 'Violet', 'Dandelion'],
+                berry: ['Blackberry', 'Wild Strawberry', 'Blueberry', 'Raspberry'],
+                herb: ['Wild Mint', 'Plantain', 'Clover', 'Wild Garlic']
+            };
+            const users = ['NatureLover', 'ForestWalker', 'MushroomHunter', 'BotanicalBee', 'WildCrafter'];
+            
+            const type = types[Math.floor(Math.random() * types.length)];
+            const name = names[type][Math.floor(Math.random() * names[type].length)];
+            const user = users[Math.floor(Math.random() * users.length)];
+            
+            // Generate random location near current view
+            const bounds = map.getBounds();
+            const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
+            const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
+            
+            const pin = {
+                id: Date.now() + Math.random(),
+                type: type,
+                name: name,
+                description: `Found this beautiful ${name} during my morning walk. Perfect condition and great spot!`,
+                location: [lat, lng],
+                author: user,
+                date: new Date().toLocaleDateString(),
+                timestamp: Date.now(),
+                isShared: true
+            };
+            
+            pins.push(pin);
+            addPinToMap(pin);
+            updatePinList();
+            saveLocalData();
+        }
+
+        function addSimulatedMessage() {
+            const users = ['NatureLover', 'ForestWalker', 'MushroomHunter', 'BotanicalBee'];
+            const messages = [
+                "Found some amazing chanterelles today! 🍄",
+                "Remember to always get proper ID before eating anything wild!",
+                "The elderflowers are blooming beautifully this week 🌸",
+                "Does anyone know good spots for wild garlic?",
+                "Just saw a beautiful patch of wild strawberries! 🍓",
+                "Weather's perfect for foraging this weekend",
+                "Always bring a field guide when exploring new areas"
+            ];
+            
+            const user = users[Math.floor(Math.random() * users.length)];
+            const text = messages[Math.floor(Math.random() * messages.length)];
+            
+            const message = {
+                id: Date.now() + Math.random(),
+                author: user,
+                text: text,
+                time: new Date().toLocaleTimeString(),
+                timestamp: Date.now(),
+                isShared: true
+            };
+            
+            chatMessages.push(message);
+            displayMessage(message);
+            saveLocalData();
+        }
+
+        function updateOnlineCount() {
+            // Simulate 2-8 online users
+            const count = Math.floor(Math.random() * 7) + 2;
+            document.getElementById('onlineCount').textContent = count;
+        }
+
+        function updateAIStatus(status) {
+            const statusEl = document.getElementById('aiStatus');
+            if (status === 'connected') {
+                statusEl.textContent = '🟢 AI Assistant Connected - Real-time sharing active!';
+                statusEl.classList.add('connected');
+            } else {
+                statusEl.textContent = '🤖 AI Assistant Ready';
+                statusEl.classList.remove('connected');
+            }
+        }
+
+        // User management
+        function setUser() {
+            const name = document.getElementById('userName').value.trim();
+            if (name) {
+                currentUser = {
+                    name: name,
+                    avatar: name.charAt(0).toUpperCase(),
+                    joinTime: Date.now()
+                };
+                localStorage.setItem('foragerUser', JSON.stringify(currentUser));
+                showUser();
+                
+                // Add welcome message to chat
+                addAIMessage(`Welcome ${name}! I'm excited to help you on your foraging journey. Feel free to ask me anything about plants, safety, or finding the best spots to explore.`);
+            }
+        }
+
+        function loadUser() {
+            const saved = localStorage.getItem('foragerUser');
+            if (saved) {
+                currentUser = JSON.parse(saved);
+                showUser();
+            }
+        }
+
+        function showUser() {
+            document.getElementById('userInput').style.display = 'none';
+            document.getElementById('userDisplay').classList.add('active');
+            document.getElementById('userAvatar').textContent = currentUser.avatar;
+            document.getElementById('displayName').textContent = currentUser.name;
+        }
+
+        // Tab management
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            const tabs = ['map', 'chat', 'ai'];
+            const index = tabs.indexOf(tab);
+            document.querySelectorAll('.tab-btn')[index].classList.add('active');
+            document.getElementById(tab + 'Tab').classList.add('active');
+        }
+
+        // Location tracking
+        function trackLocation() {
+            if (navigator.geolocation) {
+                const status = document.getElementById('locationStatus');
+                status.textContent = '🔄 Getting location...';
+                
+                navigator.geolocation.watchPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        userLocation = [lat, lng];
+                        
+                        if (currentLocationMarker) {
+                            currentLocationMarker.setLatLng([lat, lng]);
+                        } else {
+                            currentLocationMarker = L.marker([lat, lng], {icon: locationIcon})
+                                .addTo(map)
+                                .bindPopup('📍 You are here!');
+                        }
+                        
+                        map.setView([lat, lng], 15);
+                        status.textContent = '✅ Tracking location';
+                        status.classList.add('tracking');
+                    },
+                    (error) => {
+                        document.getElementById('locationStatus').textContent = '❌ Location access denied';
+                    }
+                );
+            }
+        }
+
+        // Form management
+        function toggleAddForm() {
+            const form = document.getElementById('addForm');
+            form.classList.toggle('active');
+            
+            if (form.classList.contains('active')) {
+                if (userLocation) {
+                    if (tempMarker) map.removeLayer(tempMarker);
+                    tempMarker = L.marker(userLocation, {opacity: 0.6})
+                        .addTo(map)
+                        .bindPopup('📍 New discovery location');
+                }
+            } else {
+                if (tempMarker) {
+                    map.removeLayer(tempMarker);
+                    tempMarker = null;
+                }
+                resetForm();
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('pinName').value = '';
+            document.getElementById('pinDescription').value = '';
+            document.getElementById('photoInput').value = '';
+            document.getElementById('photoPreview').classList.remove('active');
+            document.getElementById('photoPreview').src = '';
+            document.getElementById('aiAnalyzeBtn').classList.remove('active');
+            document.getElementById('aiResults').classList.remove('active');
+            currentPhotoData = null;
+            selectType('mushroom');
+        }
+
+        function selectType(type) {
+            selectedType = type;
+            document.getElementById('pinType').value = type;
+            document.querySelectorAll('.type-option').forEach(opt => opt.classList.remove('selected'));
+            document.querySelector(`[data-type="${type}"]`).classList.add('selected');
+        }
+
+        // Photo handling
+        function handlePhotoSelect(event) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        const maxWidth = 800;
+                        const maxHeight = 600;
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (width > height) {
+                            if (width > maxWidth) {
+                                height = (height * maxWidth) / width;
+                                width = maxWidth;
+                            }
+                        } else {
+                            if (height > maxHeight) {
+                                width = (width * maxHeight) / height;
+                                height = maxHeight;
+                            }
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        currentPhotoData = canvas.toDataURL('image/jpeg', 0.8);
+                        
+                        const preview = document.getElementById('photoPreview');
+                        preview.src = currentPhotoData;
+                        preview.classList.add('active');
+                        
+                        document.getElementById('aiAnalyzeBtn').classList.add('active');
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // AI Analysis
+        function analyzeWithAI() {
+            if (!currentPhotoData) return;
+            
+            const resultsDiv = document.getElementById('aiResults');
+            const contentDiv = document.getElementById('aiResultsContent');
+            
+            resultsDiv.classList.add('active');
+            contentDiv.innerHTML = '<div style="text-align: center; padding: 20px;">🤖 Analyzing image...</div>';
+            
+            // Simulate AI analysis
+            setTimeout(() => {
+                const analyses = [
+                    {
+                        type: 'mushroom',
+                        confidence: 'High',
+                        species: 'Chanterelle (Cantharellus cibarius)',
+                        edible: 'Yes - Excellent edible',
+                        safety: 'Safe when properly identified. Look for false gills and apricot scent.',
+                        tips: 'Best harvested young, clean thoroughly, cook before eating.'
+                    },
+                    {
+                        type: 'flower',
+                        confidence: 'Medium',
+                        species: 'Wild Rose (Rosa canina)',
+                        edible: 'Petals and hips are edible',
+                        safety: 'Generally safe, avoid if treated with chemicals.',
+                        tips: 'Rose hips are high in vitamin C. Petals make great tea.'
+                    },
+                    {
+                        type: 'berry',
+                        confidence: 'High',
+                        species: 'Blackberry (Rubus species)',
+                        edible: 'Yes - Very safe',
+                        safety: 'No toxic look-alikes for aggregate berries like this.',
+                        tips: 'Peak ripeness when deep purple/black. Rich in antioxidants.'
+                    },
+                    {
+                        type: 'herb',
+                        confidence: 'Medium',
+                        species: 'Plantain (Plantago major)',
+                        edible: 'Yes - Young leaves best',
+                        safety: 'Very safe, known as "nature\'s bandaid".',
+                        tips: 'Great for wound healing, can be eaten raw or cooked.'
+                    }
+                ];
+                
+                const randomAnalysis = analyses[Math.floor(Math.random() * analyses.length)];
+                
+                // Auto-select the detected type
+                selectType(randomAnalysis.type);
+                
+                // Fill in suggested name
+                document.getElementById('pinName').value = randomAnalysis.species.split('(')[0].trim();
+                
+                contentDiv.innerHTML = `
+                    <div style="margin-bottom: 10px;">
+                        <strong>Species:</strong> ${randomAnalysis.species}<br>
+                        <strong>Confidence:</strong> ${randomAnalysis.confidence}<br>
+                        <strong>Edible:</strong> ${randomAnalysis.edible}
+                    </div>
+                    <div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                        <strong>⚠️ Safety:</strong> ${randomAnalysis.safety}
+                    </div>
+                    <div style="background: #d4edda; padding: 10px; border-radius: 5px;">
+                        <strong>💡 Tips:</strong> ${randomAnalysis.tips}
+                    </div>
+                    <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                        <em>Note: Always verify AI identifications with expert sources before consuming any wild plants.</em>
+                    </div>
+                `;
+            }, 2000);
+        }
+
+        // Pin management
+        function savePin() {
+            if (!currentUser) {
+                alert('Please set your name first');
+                return;
+            }
+            
+            const name = document.getElementById('pinName').value.trim();
+            const description = document.getElementById('pinDescription').value.trim();
+            
+            if (!name || !description) {
+                alert('Please fill in name and description');
+                return;
+            }
+            
+            if (!userLocation && !tempMarker) {
+                alert('Please enable location or click on the map');
+                return;
+            }
+            
+            let pinLocation;
+            if (tempMarker) {
+                const latlng = tempMarker.getLatLng();
+                pinLocation = [latlng.lat, latlng.lng];
+            } else {
+                pinLocation = userLocation;
+            }
+            
+            const pin = {
+                id: Date.now(),
+                type: selectedType,
+                name: name,
+                description: description,
+                photo: currentPhotoData || null,
+                location: pinLocation,
+                author: currentUser.name,
+                date: new Date().toLocaleDateString(),
+                timestamp: Date.now(),
+                isOwn: true
+            };
+            
+            pins.push(pin);
+            addPinToMap(pin);
+            updatePinList();
+            saveLocalData();
+            
+            // Close form and cleanup
+            document.getElementById('addForm').classList.remove('active');
+            if (tempMarker) {
+                map.removeLayer(tempMarker);
+                tempMarker = null;
+            }
+            resetForm();
+            
+            // Success message
+            const status = document.getElementById('locationStatus');
+            const originalText = status.textContent;
+            status.textContent = '✅ Discovery saved! 🌟';
+            setTimeout(() => {
+                status.textContent = originalText;
+            }, 3000);
+            
+            // Add AI congratulation
+            addAIMessage(`Great discovery! I see you found a ${name}. ${getAIEncouragement(selectedType)} Keep up the excellent foraging work! 🌿`);
+        }
+
+        function getAIEncouragement(type) {
+            const encouragements = {
+                mushroom: "Mushrooms are fascinating - make sure you're 100% certain of identification before consuming.",
+                flower: "Flowers can add beauty and flavor to your foraging finds.",
+                berry: "Berries are often the safest wild foods for beginners to identify.",
+                herb: "Wild herbs can be incredibly nutritious and flavorful additions to meals."
+            };
+            return encouragements[type] || "Every discovery helps you become a better forager!";
+        }
+
+        function addPinToMap(pin) {
+            const icon = icons[pin.type] || icons.unknown;
+            const marker = L.marker([pin.location[0], pin.location[1]], {icon: icon}).addTo(map);
+            
+            const ownerBadge = pin.isOwn ? '<span style="background: #667eea; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px;">Your Discovery</span>' : '';
+            
+            marker.bindPopup(`
+                <div style="min-width: 200px;">
+                    <h4>${pin.name}${ownerBadge}</h4>
+                    ${pin.photo ? `<img src="${pin.photo}" style="width:100%; height:150px; object-fit:cover; border-radius:8px; margin:10px 0;">` : ''}
+                    <p>${pin.description}</p>
+                    <small>By ${pin.author} • ${pin.date}</small>
+                </div>
+            `);
+            
+            marker.pinId = pin.id;
+            if (!window.markers) window.markers = {};
+            window.markers[pin.id] = marker;
+        }
+
+        function updatePinList() {
+            const list = document.getElementById('pinList');
+            if (pins.length === 0) {
+                list.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No discoveries yet. Start exploring! 🌿</p>';
+                return;
+            }
+            
+            const userPins = currentUser ? pins.filter(p => p.author === currentUser.name) : [];
+            const otherPins = currentUser ? pins.filter(p => p.author !== currentUser.name) : pins;
+            
+            let html = '';
+            
+            if (userPins.length > 0) {
+                html += '<div style="font-weight: 600; color: #667eea; margin-bottom: 10px;">🌟 Your Discoveries:</div>';
+                html += userPins.slice(-5).reverse().map(pin => `
+                    <div class="pin-item" onclick="focusPin(${pin.id})" style="border-left: 3px solid #667eea;">
+                        <span class="pin-type ${pin.type}">${pin.type}</span>
+                        <div style="font-weight: 600;">${pin.name}</div>
+                        <div style="font-size: 13px; color: #666;">${pin.description.substring(0, 50)}${pin.description.length > 50 ? '...' : ''}</div>
+                        <div style="font-size: 11px; color: #999; margin-top: 5px;">${pin.date}</div>
+                        <button class="delete-btn" onclick="event.stopPropagation(); deletePin(${pin.id})">Delete</button>
+                    </div>
+                `).join('');
+            }
+            
+            if (otherPins.length > 0) {
+                if (userPins.length > 0) html += '<div style="font-weight: 600; color: #11998e; margin: 15px 0 10px;">🌍 Community Discoveries:</div>';
+                html += otherPins.slice(-10).reverse().map(pin => `
+                    <div class="pin-item" onclick="focusPin(${pin.id})">
+                        <span class="pin-type ${pin.type}">${pin.type}</span>
+                        <div style="font-weight: 600;">${pin.name}</div>
+                        <div style="font-size: 13px; color: #666;">${pin.description.substring(0, 50)}${pin.description.length > 50 ? '...' : ''}</div>
+                        <div style="font-size: 11px; color: #999; margin-top: 5px;">By ${pin.author} • ${pin.date}</div>
+                    </div>
+                `).join('');
+            }
+            
+            list.innerHTML = html;
+        }
+
+        function deletePin(id) {
+            if (confirm('Delete this discovery?')) {
+                pins = pins.filter(p => p.id !== id);
+                if (window.markers && window.markers[id]) {
+                    map.removeLayer(window.markers[id]);
+                    delete window.markers[id];
+                }
+                updatePinList();
+                saveLocalData();
+            }
+        }
+
+        function focusPin(id) {
+            const pin = pins.find(p => p.id === id);
+            if (pin) {
+                map.setView([pin.location[0], pin.location[1]], 17);
+                if (window.markers && window.markers[id]) {
+                    window.markers[id].openPopup();
+                }
+            }
+        }
+
+        // Chat functionality
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            
+            if (!text) return;
+            
+            if (!currentUser) {
+                alert('Please set your name first!');
+                return;
+            }
+            
+            const message = {
+                id: Date.now(),
+                author: currentUser.name,
+                text: text,
+                time: new Date().toLocaleTimeString(),
+                timestamp: Date.now(),
+                isOwn: true
+            };
+            
+            chatMessages.push(message);
+            displayMessage(message);
+            saveLocalData();
+            input.value = '';
+            
+            // Check if it's an AI question
+            if (text.toLowerCase().includes('ai') || text.startsWith('?') || 
+                text.toLowerCase().includes('identify') || text.toLowerCase().includes('help')) {
+                setTimeout(() => respondWithAI(text), 1000);
+            }
+        }
+
+        function displayMessage(msg) {
+            const container = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = `chat-message ${msg.isOwn ? 'own' : ''} ${msg.isAI ? 'ai' : ''}`;
+            div.innerHTML = `
+                <div class="chat-author">${msg.author}</div>
+                <div class="chat-text">${msg.text}</div>
+                <div class="chat-time">${msg.time}</div>
+            `;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function handleChatKeypress(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        // AI functionality
+        function askAI() {
+            const input = document.getElementById('aiQuestion');
+            const question = input.value.trim();
+            
+            if (!question) return;
+            
+            addAIQuestion(question);
+            input.value = '';
+            
+            setTimeout(() => {
+                const response = generateAIResponse(question);
+                addAIResponse(response);
+            }, 1500);
+        }
+
+        function addAIQuestion(question) {
+            const container = document.getElementById('aiResponses');
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <div style="text-align: right; margin-bottom: 10px;">
+                    <div style="background: #667eea; color: white; padding: 10px; border-radius: 10px; display: inline-block; max-width: 80%;">
+                        ${question}
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function addAIResponse(response) {
+            const container = document.getElementById('aiResponses');
+            const div = document.createElement('div');
+            div.className = 'ai-response';
+            div.innerHTML = `<strong>🤖 AI Assistant:</strong><br>${response}`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function generateAIResponse(question) {
+            const q = question.toLowerCase();
+            
+            if (q.includes('mushroom') || q.includes('fungi')) {
+                return `🍄 For mushroom foraging, start with easily identifiable species like oyster mushrooms. Never eat any mushroom you're not 100% certain about. Key safety rules:
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Get multiple expert confirmations</li>
+                    <li>Learn toxic look-alikes</li>
+                    <li>Start with spore prints for ID</li>
+                    <li>Cook all wild mushrooms thoroughly</li>
+                </ul>
+                Would you like specific recommendations for your area?`;
+            }
+            
+            if (q.includes('berry') || q.includes('berries')) {
+                return `🍓 Berries are great for beginners! Safe options include:
+                <br><br><strong>Easy to identify:</strong> Blackberries, raspberries, elderberries, rose hips
+                <br><strong>Season:</strong> Most ripen mid-summer to early fall
+                <br><strong>Safety tip:</strong> Avoid white or unknown berries - stick to familiar aggregate berries
+                <br><br>Always clean thoroughly and start with small amounts to test tolerance.`;
+            }
+            
+            if (q.includes('safe') || q.includes('safety') || q.includes('beginner')) {
+                return `🛡️ Foraging safety fundamentals:
+                <br><br><strong>Golden Rules:</strong>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Never eat anything you're not 100% sure about</li>
+                    <li>Get permits where required</li>
+                    <li>Take only what you need (1/3 rule)</li>
+                    <li>Avoid polluted areas (roadsides, industrial zones)</li>
+                    <li>Carry field guides and emergency contacts</li>
+                </ul>
+                Start with easily identified plants like dandelions, plantain, and clover!`;
+            }
+            
+            if (q.includes('season') || q.includes('when') || q.includes('time')) {
+                return `📅 Foraging calendar:
+                <br><br><strong>Spring:</strong> Wild greens, early herbs, tree blossoms
+                <br><strong>Summer:</strong> Berries, flowers, leafy herbs
+                <br><strong>Fall:</strong> Nuts, mushrooms, late berries, root vegetables
+                <br><strong>Winter:</strong> Bark, evergreen needles, stored nuts
+                <br><br>Peak times are usually early morning after dew dries. Check local regulations for seasonal restrictions!`;
+            }
+            
+            if (q.includes('where') || q.includes('location') || q.includes('spot')) {
+                return `📍 Best foraging locations:
+                <br><br><strong>Ideal spots:</strong> State parks, hiking trails, clean woodlands, meadow edges
+                <br><strong>Avoid:</strong> Private property, roadsides, chemically treated areas, polluted zones
+                <br><strong>Permission:</strong> Always check regulations - many parks require permits
+                <br><br>Your current map shows discoveries from other foragers nearby. Join local foraging groups for guided walks!`;
+            }
+            
+            if (q.includes('identify') || q.includes('id') || q.includes('what is')) {
+                return `🔍 Plant identification tips:
+                <br><br><strong>Use multiple sources:</strong> Field guides, apps, expert verification
+                <br><strong>Key features:</strong> Leaf shape, growth pattern, flowers, habitat
+                <br><strong>Take photos:</strong> Multiple angles, close-ups of leaves/flowers/stems
+                <br><br>I can analyze photos you upload! Try the camera feature when adding discoveries. Remember: when in doubt, don't consume!`;
+            }
+            
+            return `🤖 I'm here to help with foraging questions! I can assist with:
+            <br><br>• Plant identification and safety
+            <br>• Best foraging seasons and locations  
+            <br>• Beginner-friendly species
+            <br>• Sustainable harvesting practices
+            <br>• Photo analysis of your finds
+            <br><br>Try asking something specific like "What berries are safe for beginners?" or "When is mushroom season?"`;
+        }
+
+        function addAIMessage(text) {
+            const message = {
+                id: Date.now(),
+                author: '🤖 AI Assistant',
+                text: text,
+                time: new Date().toLocaleTimeString(),
+                timestamp: Date.now(),
+                isAI: true
+            };
+            
+            chatMessages.push(message);
+            displayMessage(message);
+        }
+
+        function respondWithAI(userMessage) {
+            const response = generateAIResponse(userMessage);
+            addAIMessage(response);
+        }
+
+        function handleAIKeypress(e) {
+            if (e.key === 'Enter') askAI();
+        }
+
+        // Data persistence
+        function saveLocalData() {
+            localStorage.setItem('foragingPins', JSON.stringify(pins));
+            localStorage.setItem('chatMessages', JSON.stringify(chatMessages));
+        }
+
+        function loadLocalData() {
+            const savedPins = localStorage.getItem('foragingPins');
+            if (savedPins) {
+                pins = JSON.parse(savedPins);
+                pins.forEach(pin => addPinToMap(pin));
+                updatePinList();
+            }
+            
+            const savedMessages = localStorage.getItem('chatMessages');
+            if (savedMessages) {
+                chatMessages = JSON.parse(savedMessages);
+                chatMessages.forEach(msg => displayMessage(msg));
+            }
+        }
+    </script>
+</body>
+</html>
